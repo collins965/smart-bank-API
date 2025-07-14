@@ -25,7 +25,7 @@ INSTALLED_APPS = [
     "rest_framework_simplejwt",
     "corsheaders",
     # Local
-    "accounts",
+    'accounts.apps.AccountsConfig',
 ]
 
 MIDDLEWARE = [
