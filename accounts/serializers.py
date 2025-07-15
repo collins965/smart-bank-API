@@ -49,12 +49,28 @@ class WalletSerializer(serializers.ModelSerializer):
 
 
 class TransactionSerializer(serializers.ModelSerializer):
-    transaction_type = serializers.ChoiceField(choices=Transaction.TRANSACTION_TYPES)
+    transaction_type = serializers.ChoiceField(choices=Transaction.TRANSACTION_TYPES, required=True)
+    sender_wallet = serializers.SerializerMethodField()
+    recipient_wallet = serializers.SerializerMethodField()
 
     class Meta:
         model = Transaction
-        fields = ['id', 'transaction_type', 'amount', 'timestamp', 'description']
-        read_only_fields = ['id', 'timestamp']
+        fields = [
+            'id', 'transaction_type', 'amount',
+            'timestamp', 'description',
+            'sender_wallet', 'recipient_wallet'
+        ]
+        read_only_fields = ['id', 'timestamp', 'sender_wallet', 'recipient_wallet']
+
+    def get_sender_wallet(self, obj):
+        if obj.sender_wallet:
+            return obj.sender_wallet.account_number
+        return None
+
+    def get_recipient_wallet(self, obj):
+        if obj.recipient_wallet:
+            return obj.recipient_wallet.account_number
+        return None
 
     def validate_amount(self, value):
         if value <= 0:
@@ -62,16 +78,16 @@ class TransactionSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        wallet = self.context['request'].user.wallet
+        request = self.context['request']
+        wallet = request.user.wallet
         transaction_type = validated_data['transaction_type']
         amount = validated_data['amount']
 
-        # Handle balance logic
         if transaction_type == 'withdraw':
             if wallet.balance < amount:
                 raise serializers.ValidationError("Insufficient balance.")
             wallet.balance -= amount
-        else:  # top_up
+        elif transaction_type == 'top_up':
             wallet.balance += amount
 
         wallet.save()
