@@ -14,20 +14,25 @@ ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split("
 
 # APPLICATIONS
 INSTALLED_APPS = [
+    # Django
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
     "django.contrib.sessions",
     "django.contrib.messages",
     "django.contrib.staticfiles",
+
     # 3rd-party
     "rest_framework",
     "rest_framework_simplejwt",
     "corsheaders",
-    # Local
-    'accounts.apps.AccountsConfig',
+     "django_filters",
+
+    # Local apps
+    "accounts.apps.AccountsConfig",
 ]
 
+# MIDDLEWARE
 MIDDLEWARE = [
     "django.middleware.security.SecurityMiddleware",
     "corsheaders.middleware.CorsMiddleware",
@@ -39,8 +44,11 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
+# URLS AND WSGI
 ROOT_URLCONF = "smartbank.urls"
+WSGI_APPLICATION = "smartbank.wsgi.application"
 
+# TEMPLATES
 TEMPLATES = [
     {
         "BACKEND": "django.template.backends.django.DjangoTemplates",
@@ -57,9 +65,7 @@ TEMPLATES = [
     },
 ]
 
-WSGI_APPLICATION = "smartbank.wsgi.application"
-
-# DATABASE
+# DATABASE (SQLite for dev)
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
@@ -81,9 +87,10 @@ TIME_ZONE = "Africa/Nairobi"
 USE_I18N = True
 USE_TZ = True
 
-# STATIC AND MEDIA
-STATIC_URL = "static/"
+# STATIC & MEDIA FILES
+STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
+
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
@@ -95,7 +102,7 @@ CORS_ALLOWED_ORIGINS = [
     os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
 ]
 
-# REST FRAMEWORK
+# REST FRAMEWORK SETTINGS
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -103,7 +110,11 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+    "DEFAULT_FILTER_BACKENDS": [
+        "django_filters.rest_framework.DjangoFilterBackend"
+    ],
 }
+
 
 # JWT SETTINGS
 SIMPLE_JWT = {
@@ -114,9 +125,5 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-# EMAIL BACKEND FOR DEV
+# EMAIL BACKEND (Console for Dev)
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
-
-MEDIA_URL = '/media/'
-MEDIA_ROOT = BASE_DIR / 'media'
-

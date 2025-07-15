@@ -1,10 +1,12 @@
 from django.db import transaction as db_transaction
+from django.contrib.auth.models import User
+from django.shortcuts import get_object_or_404
 from rest_framework import generics, status, serializers
 from rest_framework.permissions import AllowAny, IsAuthenticated
 from rest_framework.response import Response
 from rest_framework.views import APIView
-from django.contrib.auth.models import User
-from django.shortcuts import get_object_or_404
+from django_filters.rest_framework import DjangoFilterBackend, FilterSet
+import django_filters
 
 from .models import Profile, Wallet, Transaction, TransactionHistory
 from .serializers import (
@@ -15,14 +17,36 @@ from .serializers import (
     TransactionHistorySerializer,
 )
 
-# ----- Register -----
+# -------------------------------
+# Filters for Transaction History
+# -------------------------------
+
+class TransactionHistoryFilter(FilterSet):
+    start_date = django_filters.DateFilter(field_name='timestamp', lookup_expr='gte')
+    end_date = django_filters.DateFilter(field_name='timestamp', lookup_expr='lte')
+    min_amount = django_filters.NumberFilter(field_name='amount', lookup_expr='gte')
+    max_amount = django_filters.NumberFilter(field_name='amount', lookup_expr='lte')
+    type = django_filters.CharFilter(field_name='transaction_type', lookup_expr='iexact')
+
+    class Meta:
+        model = TransactionHistory
+        fields = ['start_date', 'end_date', 'min_amount', 'max_amount', 'type']
+
+
+# -------------------
+# Auth & Registration
+# -------------------
+
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = [AllowAny]
     serializer_class = RegisterSerializer
 
 
-# ----- Profile Views -----
+# -------------------
+# Profile Views
+# -------------------
+
 class ProfileDetailView(generics.RetrieveAPIView):
     serializer_class = ProfileSerializer
     permission_classes = [IsAuthenticated]
@@ -39,7 +63,10 @@ class ProfileUpdateView(generics.UpdateAPIView):
         return self.request.user.profile
 
 
-# ----- Wallet View -----
+# -------------------
+# Wallet View
+# -------------------
+
 class WalletDetailView(generics.RetrieveAPIView):
     serializer_class = WalletSerializer
     permission_classes = [IsAuthenticated]
@@ -48,7 +75,10 @@ class WalletDetailView(generics.RetrieveAPIView):
         return self.request.user.wallet
 
 
-# ----- Transaction Views -----
+# -------------------
+# Transactions Views
+# -------------------
+
 class TransactionListView(generics.ListAPIView):
     serializer_class = TransactionSerializer
     permission_classes = [IsAuthenticated]
@@ -81,7 +111,7 @@ class TransactionCreateView(generics.CreateAPIView):
         wallet.save()
         transaction = serializer.save(wallet=wallet)
 
-        # Log to transaction history
+        # Log to TransactionHistory
         TransactionHistory.objects.create(
             user=user,
             sender=user if transaction_type == 'withdraw' else None,
@@ -93,7 +123,10 @@ class TransactionCreateView(generics.CreateAPIView):
         )
 
 
-# ----- Set / Update PIN -----
+# -------------------------
+# Set or Update Transfer PIN
+# -------------------------
+
 class SetTransferPinView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -106,7 +139,10 @@ class SetTransferPinView(APIView):
         return Response({"detail": "Transfer PIN set successfully."}, status=200)
 
 
-# ----- Internal Transfers -----
+# -------------------------
+# Internal Transfer View
+# -------------------------
+
 class TransferView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -153,6 +189,7 @@ class TransferView(APIView):
                 description=description,
             )
 
+            # Log to TransactionHistory
             TransactionHistory.objects.create(
                 user=request.user,
                 sender=request.user,
@@ -166,10 +203,15 @@ class TransferView(APIView):
         return Response({"detail": f"KSh {amount} transferred successfully."}, status=200)
 
 
-# ----- View Transaction History Logs -----
+# -------------------------
+# View Transaction History (Filtered)
+# -------------------------
+
 class TransactionHistoryListView(generics.ListAPIView):
     serializer_class = TransactionHistorySerializer
     permission_classes = [IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = TransactionHistoryFilter
 
     def get_queryset(self):
         return TransactionHistory.objects.filter(user=self.request.user).order_by('-timestamp')
