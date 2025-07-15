@@ -1,20 +1,12 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from rest_framework.validators import UniqueValidator
-from .models import Profile
+from .models import Profile, Wallet, Transaction
 
 
 class ProfileSerializer(serializers.ModelSerializer):
-    phone = serializers.CharField(
-        required=False,
-        allow_blank=True,
-        max_length=15
-    )
-    id_number = serializers.CharField(
-        required=False,
-        allow_blank=True,
-        max_length=20
-    )
+    phone = serializers.CharField(required=False, allow_blank=True, max_length=15)
+    id_number = serializers.CharField(required=False, allow_blank=True, max_length=20)
 
     class Meta:
         model = Profile
@@ -34,9 +26,6 @@ class RegisterSerializer(serializers.ModelSerializer):
         fields = ['username', 'email', 'password', 'profile']
 
     def create(self, validated_data):
-        """
-        Create a user along with an optional profile.
-        """
         profile_data = validated_data.pop('profile', {})
         user = User.objects.create_user(
             username=validated_data['username'],
@@ -47,9 +36,43 @@ class RegisterSerializer(serializers.ModelSerializer):
         return user
 
     def to_representation(self, instance):
-        """
-        Include profile details in the API response.
-        """
         rep = super().to_representation(instance)
         rep['profile'] = ProfileSerializer(instance.profile).data
         return rep
+
+
+class WalletSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = Wallet
+        fields = ['account_number', 'balance', 'is_active', 'created_at']
+        read_only_fields = fields
+
+
+class TransactionSerializer(serializers.ModelSerializer):
+    transaction_type = serializers.ChoiceField(choices=Transaction.TRANSACTION_TYPES)
+
+    class Meta:
+        model = Transaction
+        fields = ['id', 'transaction_type', 'amount', 'timestamp', 'description']
+        read_only_fields = ['id', 'timestamp']
+
+    def validate_amount(self, value):
+        if value <= 0:
+            raise serializers.ValidationError("Amount must be greater than 0.")
+        return value
+
+    def create(self, validated_data):
+        wallet = self.context['request'].user.wallet
+        transaction_type = validated_data['transaction_type']
+        amount = validated_data['amount']
+
+        # Handle balance logic
+        if transaction_type == 'withdraw':
+            if wallet.balance < amount:
+                raise serializers.ValidationError("Insufficient balance.")
+            wallet.balance -= amount
+        else:  # top_up
+            wallet.balance += amount
+
+        wallet.save()
+        return Transaction.objects.create(wallet=wallet, **validated_data)
