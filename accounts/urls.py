@@ -8,6 +8,7 @@ from .views import (
     TransactionCreateView,
     SetTransferPinView,
     TransferView,
+    TransactionHistoryListView,
 )
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -34,4 +35,7 @@ urlpatterns = [
     # PIN & Transfers
     path('wallet/set-pin/', SetTransferPinView.as_view(), name='wallet-set-pin'),
     path('wallet/transfer/', TransferView.as_view(), name='wallet-transfer'),
+
+    # Transaction History Logs
+    path('wallet/history/', TransactionHistoryListView.as_view(), name='wallet-transaction-history'),
 ]

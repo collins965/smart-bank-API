@@ -65,3 +65,29 @@ class Transaction(models.Model):
 
     def __str__(self):
         return f"{self.transaction_type.upper()} - KSh {self.amount}"
+
+
+class TransactionHistory(models.Model):
+    TRANSACTION_TYPES = (
+        ('top_up', 'Top-Up'),
+        ('withdraw', 'Withdraw'),
+        ('transfer', 'Transfer'),
+    )
+
+    STATUS_CHOICES = (
+        ('pending', 'Pending'),
+        ('completed', 'Completed'),
+        ('failed', 'Failed'),
+    )
+
+    user = models.ForeignKey(User, on_delete=models.CASCADE, related_name='transaction_logs')
+    sender = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='history_sent')
+    receiver = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='history_received')
+    transaction_type = models.CharField(max_length=10, choices=TRANSACTION_TYPES)
+    status = models.CharField(max_length=10, choices=STATUS_CHOICES, default='completed')
+    amount = models.DecimalField(max_digits=12, decimal_places=2)
+    timestamp = models.DateTimeField(auto_now_add=True)
+    description = models.TextField(blank=True, null=True)
+
+    def __str__(self):
+        return f"{self.transaction_type.upper()} | {self.user.username} | KSh {self.amount} | {self.status}"

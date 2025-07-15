@@ -6,22 +6,23 @@ from rest_framework.views import APIView
 from django.contrib.auth.models import User
 from django.shortcuts import get_object_or_404
 
-from .models import Profile, Wallet, Transaction
+from .models import Profile, Wallet, Transaction, TransactionHistory
 from .serializers import (
     RegisterSerializer,
     ProfileSerializer,
     WalletSerializer,
     TransactionSerializer,
+    TransactionHistorySerializer,
 )
 
-#  Register User
+# ----- Register -----
 class RegisterView(generics.CreateAPIView):
     queryset = User.objects.all()
     permission_classes = [AllowAny]
     serializer_class = RegisterSerializer
 
 
-#  View Profile
+# ----- Profile Views -----
 class ProfileDetailView(generics.RetrieveAPIView):
     serializer_class = ProfileSerializer
     permission_classes = [IsAuthenticated]
@@ -30,7 +31,6 @@ class ProfileDetailView(generics.RetrieveAPIView):
         return self.request.user.profile
 
 
-#  Update Profile
 class ProfileUpdateView(generics.UpdateAPIView):
     serializer_class = ProfileSerializer
     permission_classes = [IsAuthenticated]
@@ -39,7 +39,7 @@ class ProfileUpdateView(generics.UpdateAPIView):
         return self.request.user.profile
 
 
-#  View Wallet
+# ----- Wallet View -----
 class WalletDetailView(generics.RetrieveAPIView):
     serializer_class = WalletSerializer
     permission_classes = [IsAuthenticated]
@@ -48,7 +48,7 @@ class WalletDetailView(generics.RetrieveAPIView):
         return self.request.user.wallet
 
 
-#  View Transaction History
+# ----- Transaction Views -----
 class TransactionListView(generics.ListAPIView):
     serializer_class = TransactionSerializer
     permission_classes = [IsAuthenticated]
@@ -58,7 +58,6 @@ class TransactionListView(generics.ListAPIView):
         return wallet.sent_transactions.all() | wallet.received_transactions.all()
 
 
-#  Top-Up / Withdraw
 class TransactionCreateView(generics.CreateAPIView):
     serializer_class = TransactionSerializer
     permission_classes = [IsAuthenticated]
@@ -70,6 +69,7 @@ class TransactionCreateView(generics.CreateAPIView):
         wallet = self.request.user.wallet
         amount = serializer.validated_data['amount']
         transaction_type = serializer.validated_data['transaction_type']
+        user = self.request.user
 
         if transaction_type == 'withdraw' and wallet.balance < amount:
             raise serializers.ValidationError("Insufficient balance.")
@@ -79,10 +79,21 @@ class TransactionCreateView(generics.CreateAPIView):
             wallet.balance -= amount
 
         wallet.save()
-        serializer.save(wallet=wallet)
+        transaction = serializer.save(wallet=wallet)
+
+        # Log to transaction history
+        TransactionHistory.objects.create(
+            user=user,
+            sender=user if transaction_type == 'withdraw' else None,
+            receiver=user if transaction_type == 'top_up' else None,
+            transaction_type=transaction_type,
+            amount=amount,
+            status='completed',
+            description=transaction.description,
+        )
 
 
-#  Set or Update Transfer PIN
+# ----- Set / Update PIN -----
 class SetTransferPinView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -95,7 +106,7 @@ class SetTransferPinView(APIView):
         return Response({"detail": "Transfer PIN set successfully."}, status=200)
 
 
-#  Internal Transfer
+# ----- Internal Transfers -----
 class TransferView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -128,7 +139,6 @@ class TransferView(APIView):
         if sender_wallet.balance < amount:
             return Response({"detail": "Insufficient balance."}, status=400)
 
-        # Atomic transaction
         with db_transaction.atomic():
             sender_wallet.balance -= amount
             recipient_wallet.balance += amount
@@ -143,4 +153,23 @@ class TransferView(APIView):
                 description=description,
             )
 
+            TransactionHistory.objects.create(
+                user=request.user,
+                sender=request.user,
+                receiver=recipient_wallet.user,
+                transaction_type='transfer',
+                amount=amount,
+                status='completed',
+                description=description,
+            )
+
         return Response({"detail": f"KSh {amount} transferred successfully."}, status=200)
+
+
+# ----- View Transaction History Logs -----
+class TransactionHistoryListView(generics.ListAPIView):
+    serializer_class = TransactionHistorySerializer
+    permission_classes = [IsAuthenticated]
+
+    def get_queryset(self):
+        return TransactionHistory.objects.filter(user=self.request.user).order_by('-timestamp')

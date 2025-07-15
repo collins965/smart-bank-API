@@ -1,8 +1,9 @@
 from django.contrib import admin
 from django.contrib.auth.models import User
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
-from .models import Profile, Wallet
 from django.contrib.admin import SimpleListFilter
+
+from .models import Profile, Wallet, TransactionHistory
 
 # ----- Custom Filters -----
 
@@ -83,3 +84,11 @@ class WalletAdmin(admin.ModelAdmin):
         updated = queryset.update(is_active=False)
         self.message_user(request, f"{updated} wallet(s) successfully frozen.")
     freeze_selected_wallets.short_description = "Freeze selected wallets"
+
+# ----- Transaction History Admin -----
+
+@admin.register(TransactionHistory)
+class TransactionHistoryAdmin(admin.ModelAdmin):
+    list_display = ('user', 'sender', 'receiver', 'transaction_type', 'amount', 'status', 'timestamp')
+    list_filter = ('transaction_type', 'status', 'timestamp')
+    search_fields = ('user__username', 'sender__username', 'receiver__username', 'description')

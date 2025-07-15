@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
 from rest_framework.validators import UniqueValidator
-from .models import Profile, Wallet, Transaction
+
+from .models import Profile, Wallet, Transaction, TransactionHistory
 
 
 class ProfileSerializer(serializers.ModelSerializer):
@@ -91,4 +92,25 @@ class TransactionSerializer(serializers.ModelSerializer):
             wallet.balance += amount
 
         wallet.save()
-        return Transaction.objects.create(wallet=wallet, **validated_data)
+        return Transaction.objects.create(sender_wallet=wallet if transaction_type == 'withdraw' else None,
+                                          recipient_wallet=wallet if transaction_type == 'top_up' else None,
+                                          **validated_data)
+
+
+class TransactionHistorySerializer(serializers.ModelSerializer):
+    sender = serializers.SerializerMethodField()
+    receiver = serializers.SerializerMethodField()
+
+    class Meta:
+        model = TransactionHistory
+        fields = [
+            'id', 'user', 'sender', 'receiver', 'transaction_type',
+            'amount', 'status', 'description', 'timestamp'
+        ]
+        read_only_fields = fields
+
+    def get_sender(self, obj):
+        return obj.sender.username if obj.sender else None
+
+    def get_receiver(self, obj):
+        return obj.receiver.username if obj.receiver else None
