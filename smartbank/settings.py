@@ -12,9 +12,9 @@ SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "fallback-secret-key")
 DEBUG = os.getenv("DEBUG", "True") == "True"
 ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
 
-# APPLICATIONS
+# INSTALLED APPS
 INSTALLED_APPS = [
-    # Django
+    # Django apps
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -22,14 +22,15 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 
-    # 3rd-party
+    # 3rd-party apps
     "rest_framework",
     "rest_framework_simplejwt",
     "corsheaders",
-     "django_filters",
+    "django_filters",
 
     # Local apps
     "accounts.apps.AccountsConfig",
+    "mpesa",  
 ]
 
 # MIDDLEWARE
@@ -44,7 +45,8 @@ MIDDLEWARE = [
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
 ]
 
-# URLS AND WSGI
+
+# URLS & WSGI
 ROOT_URLCONF = "smartbank.urls"
 WSGI_APPLICATION = "smartbank.wsgi.application"
 
@@ -65,7 +67,7 @@ TEMPLATES = [
     },
 ]
 
-# DATABASE (SQLite for dev)
+# DATABASE (SQLite Dev)
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
@@ -73,7 +75,7 @@ DATABASES = {
     }
 }
 
-# PASSWORD VALIDATORS
+# AUTHENTICATION
 AUTH_PASSWORD_VALIDATORS = [
     {"NAME": "django.contrib.auth.password_validation.UserAttributeSimilarityValidator"},
     {"NAME": "django.contrib.auth.password_validation.MinimumLengthValidator", "OPTIONS": {"min_length": 8}},
@@ -90,16 +92,12 @@ USE_TZ = True
 # STATIC & MEDIA FILES
 STATIC_URL = "/static/"
 STATICFILES_DIRS = [BASE_DIR / "static"]
-
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# DEFAULT AUTO FIELD
-DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
-
 # CORS SETTINGS
 CORS_ALLOWED_ORIGINS = [
-    os.getenv("FRONTEND_ORIGIN", "http://localhost:5173")
+    os.getenv("FRONTEND_ORIGIN", "http://localhost:5173"),
 ]
 
 # REST FRAMEWORK SETTINGS
@@ -111,10 +109,9 @@ REST_FRAMEWORK = {
         "rest_framework.permissions.IsAuthenticated",
     ],
     "DEFAULT_FILTER_BACKENDS": [
-        "django_filters.rest_framework.DjangoFilterBackend"
+        "django_filters.rest_framework.DjangoFilterBackend",
     ],
 }
-
 
 # JWT SETTINGS
 SIMPLE_JWT = {
@@ -125,5 +122,13 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-# EMAIL BACKEND (Console for Dev)
+# EMAIL BACKEND (Dev only)
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
+
+# MPESA DARAJA SETTINGS (from .env)
+MPESA_CONSUMER_KEY = os.getenv("MPESA_CONSUMER_KEY")
+MPESA_CONSUMER_SECRET = os.getenv("MPESA_CONSUMER_SECRET")
+MPESA_SHORTCODE = os.getenv("MPESA_SHORTCODE", "174379")
+MPESA_PASSKEY = os.getenv("MPESA_PASSKEY")
+MPESA_CALLBACK_URL = os.getenv("MPESA_CALLBACK_URL", "https://yourdomain.com/api/mpesa/callback/")
+MPESA_ENVIRONMENT = os.getenv("MPESA_ENVIRONMENT", "sandbox")  
