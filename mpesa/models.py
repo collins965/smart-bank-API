@@ -1,8 +1,6 @@
 # mpesa/models.py
-
 from django.db import models
 from django.contrib.auth.models import User
-
 
 class MpesaTransaction(models.Model):
     """Logs M-Pesa STK Push transactions"""
