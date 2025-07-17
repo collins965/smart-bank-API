@@ -32,6 +32,7 @@ INSTALLED_APPS = [
     "accounts.apps.AccountsConfig",
     "mpesa", 
     'loans.apps.LoansConfig', 
+    "investments.apps.InvestmentsConfig",
 ]
 
 # MIDDLEWARE

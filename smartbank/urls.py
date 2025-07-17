@@ -23,7 +23,8 @@ urlpatterns = [
     path('admin/', admin.site.urls),
     path('api/accounts/', include('accounts.urls')),
     path("api/mpesa/", include("mpesa.urls")),
-    path('api/loans/', include('loans.urls')), 
+    path('api/loans/', include('loans.urls')),
+    path('api/investments/', include('investments.urls')), 
 ]
 
 if settings.DEBUG:
