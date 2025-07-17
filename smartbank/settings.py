@@ -7,14 +7,14 @@ from dotenv import load_dotenv
 BASE_DIR = Path(__file__).resolve().parent.parent
 load_dotenv(BASE_DIR.parent / ".env")
 
-# SECURITY SETTINGS
+# SECURITY
 SECRET_KEY = os.getenv("DJANGO_SECRET_KEY", "fallback-secret-key")
 DEBUG = os.getenv("DEBUG", "True") == "True"
 ALLOWED_HOSTS = os.getenv("DJANGO_ALLOWED_HOSTS", "127.0.0.1,localhost").split(",")
 
-# INSTALLED APPS
+# APPLICATIONS
 INSTALLED_APPS = [
-    # Django apps
+    # Django Core
     "django.contrib.admin",
     "django.contrib.auth",
     "django.contrib.contenttypes",
@@ -22,36 +22,35 @@ INSTALLED_APPS = [
     "django.contrib.messages",
     "django.contrib.staticfiles",
 
-    # 3rd-party apps
+    # 3rd Party
     "rest_framework",
     "rest_framework_simplejwt",
     "corsheaders",
     "django_filters",
 
-    # Local apps
-    # Local apps
-"accounts.apps.AccountsConfig",
-"mpesa.apps.MpesaConfig", 
-"loans.apps.LoansConfig", 
-"investments.apps.InvestmentsConfig",
-"notifications.apps.NotificationsConfig",
-"admin_panel.apps.AdminPanelConfig",
+    # Local Apps
+    "accounts.apps.AccountsConfig",
+    "mpesa.apps.MpesaConfig",
+    "loans.apps.LoansConfig",
+    "investments.apps.InvestmentsConfig",
+    "notifications.apps.NotificationsConfig",
+    "admin_panel.apps.AdminPanelConfig",
 ]
 
 # MIDDLEWARE
 MIDDLEWARE = [
+    "corsheaders.middleware.CorsMiddleware",  # Must be first for CORS
     "django.middleware.security.SecurityMiddleware",
-    "corsheaders.middleware.CorsMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
     "django.middleware.csrf.CsrfViewMiddleware",
     "django.contrib.auth.middleware.AuthenticationMiddleware",
     "django.contrib.messages.middleware.MessageMiddleware",
     "django.middleware.clickjacking.XFrameOptionsMiddleware",
+    "core.middleware.LogAPIErrorsMiddleware",  # Custom logging middleware
 ]
 
-
-# URLS & WSGI
+# URL & WSGI
 ROOT_URLCONF = "smartbank.urls"
 WSGI_APPLICATION = "smartbank.wsgi.application"
 
@@ -72,7 +71,7 @@ TEMPLATES = [
     },
 ]
 
-# DATABASE (SQLite Dev)
+# DATABASE
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.sqlite3",
@@ -100,12 +99,14 @@ STATICFILES_DIRS = [BASE_DIR / "static"]
 MEDIA_URL = "/media/"
 MEDIA_ROOT = BASE_DIR / "media"
 
-# CORS SETTINGS
+# CORS CONFIGURATION
 CORS_ALLOWED_ORIGINS = [
     os.getenv("FRONTEND_ORIGIN", "http://localhost:5173"),
 ]
+# Development only
+CORS_ALLOW_ALL_ORIGINS = DEBUG
 
-# REST FRAMEWORK SETTINGS
+# REST FRAMEWORK CONFIG
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
         "rest_framework_simplejwt.authentication.JWTAuthentication",
@@ -113,12 +114,16 @@ REST_FRAMEWORK = {
     "DEFAULT_PERMISSION_CLASSES": [
         "rest_framework.permissions.IsAuthenticated",
     ],
+    "DEFAULT_PAGINATION_CLASS": "rest_framework.pagination.PageNumberPagination",
+    "PAGE_SIZE": 10,
     "DEFAULT_FILTER_BACKENDS": [
         "django_filters.rest_framework.DjangoFilterBackend",
+        "rest_framework.filters.OrderingFilter",
+        "rest_framework.filters.SearchFilter",
     ],
 }
 
-# JWT SETTINGS
+# JWT CONFIG
 SIMPLE_JWT = {
     "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
@@ -127,13 +132,45 @@ SIMPLE_JWT = {
     "AUTH_HEADER_TYPES": ("Bearer",),
 }
 
-# EMAIL BACKEND (Dev only)
+# EMAIL
 EMAIL_BACKEND = "django.core.mail.backends.console.EmailBackend"
 
-# MPESA DARAJA SETTINGS (from .env)
+# MPESA SETTINGS
 MPESA_CONSUMER_KEY = os.getenv("MPESA_CONSUMER_KEY")
 MPESA_CONSUMER_SECRET = os.getenv("MPESA_CONSUMER_SECRET")
 MPESA_SHORTCODE = os.getenv("MPESA_SHORTCODE", "174379")
 MPESA_PASSKEY = os.getenv("MPESA_PASSKEY")
 MPESA_CALLBACK_URL = os.getenv("MPESA_CALLBACK_URL", "https://yourdomain.com/api/mpesa/callback/")
-MPESA_ENVIRONMENT = os.getenv("MPESA_ENVIRONMENT", "sandbox")  
+MPESA_ENVIRONMENT = os.getenv("MPESA_ENVIRONMENT", "sandbox")
+
+# LOGGING
+LOGGING = {
+    "version": 1,
+    "disable_existing_loggers": False,
+    "formatters": {
+        "verbose": {
+            "format": "{levelname} {asctime} {module} {message}",
+            "style": "{",
+        },
+    },
+    "handlers": {
+        "file": {
+            "level": "WARNING",
+            "class": "logging.FileHandler",
+            "filename": BASE_DIR / "logs/smartbank_errors.log",
+            "formatter": "verbose",
+        },
+    },
+    "loggers": {
+        "django": {
+            "handlers": ["file"],
+            "level": "WARNING",
+            "propagate": True,
+        },
+        "mpesa": {
+            "handlers": ["file"],
+            "level": "INFO",
+            "propagate": True,
+        },
+    },
+}
