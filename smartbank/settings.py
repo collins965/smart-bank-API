@@ -30,7 +30,8 @@ INSTALLED_APPS = [
 
     # Local apps
     "accounts.apps.AccountsConfig",
-    "mpesa",  
+    "mpesa", 
+    'loans.apps.LoansConfig', 
 ]
 
 # MIDDLEWARE
