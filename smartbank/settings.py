@@ -29,10 +29,13 @@ INSTALLED_APPS = [
     "django_filters",
 
     # Local apps
-    "accounts.apps.AccountsConfig",
-    "mpesa", 
-    'loans.apps.LoansConfig', 
-    "investments.apps.InvestmentsConfig",
+    # Local apps
+"accounts.apps.AccountsConfig",
+"mpesa.apps.MpesaConfig", 
+"loans.apps.LoansConfig", 
+"investments.apps.InvestmentsConfig",
+"notifications.apps.NotificationsConfig",
+"admin_panel.apps.AdminPanelConfig",
 ]
 
 # MIDDLEWARE
