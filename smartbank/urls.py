@@ -28,6 +28,7 @@ urlpatterns = [
     path('api/investments/', include('investments.urls')),
     path('api/notifications/', include('notifications.urls')),
     path('api/admin_panel/', include('admin_panel.admin_urls')),
+    path('api/contact/', include('contact.urls')),
 ]
 
 if settings.DEBUG:

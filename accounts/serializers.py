@@ -13,8 +13,8 @@ class ProfileSerializer(serializers.ModelSerializer):
         model = Profile
         fields = ['id_number', 'bio', 'phone', 'date_of_birth', 'address', 'profile_image']
 
-
-class RegisterSerializer(serializers.ModelSerializer):
+# Rename RegisterSerializer to UserSerializer
+class UserSerializer(serializers.ModelSerializer):
     email = serializers.EmailField(
         required=True,
         validators=[UniqueValidator(queryset=User.objects.all())]
@@ -38,7 +38,11 @@ class RegisterSerializer(serializers.ModelSerializer):
 
     def to_representation(self, instance):
         rep = super().to_representation(instance)
-        rep['profile'] = ProfileSerializer(instance.profile).data
+        # Ensure profile exists before trying to serialize it
+        if hasattr(instance, 'profile') and instance.profile:
+            rep['profile'] = ProfileSerializer(instance.profile).data
+        else:
+            rep['profile'] = None # Or an empty dict, depending on desired output
         return rep
 
 
