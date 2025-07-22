@@ -1,9 +1,10 @@
+from django.db.models import Q
+from django.shortcuts import get_object_or_404
+from django.http import FileResponse
 from rest_framework import generics, permissions, status
 from rest_framework.response import Response
 from rest_framework.views import APIView
 from django.contrib.auth.models import User
-from django.shortcuts import get_object_or_404
-from django.http import FileResponse
 
 from .models import Profile, Wallet, Transaction, TransactionHistory
 from .serializers import (
@@ -13,8 +14,6 @@ from .serializers import (
 )
 from .utils import generate_statement_pdf
 
-from datetime import datetime
-
 
 # --- Auth/Register ---
 class RegisterView(generics.CreateAPIView):
@@ -23,8 +22,8 @@ class RegisterView(generics.CreateAPIView):
     permission_classes = [permissions.AllowAny]
 
 
-# --- Profile ---
-class ProfileDetailView(generics.RetrieveAPIView):
+# --- Profile (Retrieve & Update) ---
+class ProfileView(generics.RetrieveUpdateAPIView):
     serializer_class = ProfileSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -32,16 +31,8 @@ class ProfileDetailView(generics.RetrieveAPIView):
         return self.request.user.profile
 
 
-class ProfileUpdateView(generics.UpdateAPIView):
-    serializer_class = ProfileSerializer
-    permission_classes = [permissions.IsAuthenticated]
-
-    def get_object(self):
-        return self.request.user.profile
-
-
-# --- Wallet ---
-class WalletDetailView(generics.RetrieveAPIView):
+# --- Wallet (Retrieve Only) ---
+class WalletView(generics.RetrieveAPIView):
     serializer_class = WalletSerializer
     permission_classes = [permissions.IsAuthenticated]
 
@@ -49,15 +40,19 @@ class WalletDetailView(generics.RetrieveAPIView):
         return self.request.user.wallet
 
 
-# --- Transactions ---
+# --- Transactions List (Sent or Received) ---
 class TransactionListView(generics.ListAPIView):
     serializer_class = TransactionSerializer
     permission_classes = [permissions.IsAuthenticated]
 
     def get_queryset(self):
-        return Transaction.objects.filter(user=self.request.user).order_by('-timestamp')
+        user_wallet = self.request.user.wallet
+        return Transaction.objects.filter(
+            Q(sender_wallet=user_wallet) | Q(recipient_wallet=user_wallet)
+        ).order_by('-timestamp')
 
 
+# --- Transaction Create ---
 class TransactionCreateView(generics.CreateAPIView):
     serializer_class = TransactionSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -90,7 +85,7 @@ class TransferView(APIView):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
-# --- Transaction History Logs ---
+# --- Transaction History List with optional filters ---
 class TransactionHistoryListView(generics.ListAPIView):
     serializer_class = TransactionHistorySerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -98,13 +93,12 @@ class TransactionHistoryListView(generics.ListAPIView):
     def get_queryset(self):
         queryset = TransactionHistory.objects.filter(user=self.request.user).order_by('-timestamp')
 
-        # Optional filters
         tx_type = self.request.query_params.get('type')
         date = self.request.query_params.get('date')
         amount = self.request.query_params.get('amount')
 
         if tx_type:
-            queryset = queryset.filter(type=tx_type)
+            queryset = queryset.filter(transaction_type=tx_type)
         if date:
             queryset = queryset.filter(timestamp__date=date)
         if amount:
@@ -126,7 +120,7 @@ class PDFStatementView(APIView):
             month = int(month)
             year = int(year)
         except (TypeError, ValueError):
-            return Response({'error': 'Month and Year must be provided as integers.'}, status=400)
+            return Response({'error': 'Month and Year must be provided as integers.'}, status=status.HTTP_400_BAD_REQUEST)
 
         transactions = TransactionHistory.objects.filter(
             user=user,
@@ -135,7 +129,7 @@ class PDFStatementView(APIView):
         ).order_by('timestamp')
 
         if not transactions.exists():
-            return Response({'error': 'No transactions found for this period.'}, status=404)
+            return Response({'error': 'No transactions found for this period.'}, status=status.HTTP_404_NOT_FOUND)
 
         pdf_buffer = generate_statement_pdf(user, transactions, month, year)
         filename = f"{user.username}_statement_{month}_{year}.pdf"

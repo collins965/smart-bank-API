@@ -37,6 +37,8 @@ INSTALLED_APPS = [
     "admin_panel.apps.AdminPanelConfig",
     'contact.apps.ContactConfig',
     "core.apps.CoreConfig",
+    "offers",
+   "transactions.apps.TransactionsConfig",
 ]
 
 # MIDDLEWARE
@@ -184,3 +186,11 @@ EMAIL_USE_TLS = True
 EMAIL_HOST_USER = os.getenv("EMAIL_HOST_USER")
 EMAIL_HOST_PASSWORD = os.getenv("EMAIL_HOST_PASSWORD")
 DEFAULT_FROM_EMAIL = EMAIL_HOST_USER
+
+
+# settings.py
+
+CSRF_COOKIE_HTTPONLY = False  # Allow JS to read CSRF cookie
+CSRF_TRUSTED_ORIGINS = ['http://localhost:5173']  # Your Vite dev server
+CORS_ALLOWED_ORIGINS = ['http://localhost:5173']
+CORS_ALLOW_CREDENTIALS = True

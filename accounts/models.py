@@ -1,7 +1,9 @@
 from django.db import models
 from django.contrib.auth.models import User
 from django.contrib.auth.hashers import make_password, check_password
+from django.core.exceptions import ValidationError
 import uuid
+import re
 
 
 class Profile(models.Model):
@@ -18,6 +20,8 @@ class Profile(models.Model):
         return self.user.username
 
     def set_transfer_pin(self, raw_pin):
+        if not re.fullmatch(r'\d{4}', raw_pin):
+            raise ValidationError("Transfer PIN must be exactly 4 digits.")
         self.transfer_pin = make_password(raw_pin)
         self.save()
 
@@ -30,12 +34,18 @@ class Wallet(models.Model):
     account_number = models.CharField(max_length=12, unique=True, editable=False)
     balance = models.DecimalField(max_digits=12, decimal_places=2, default=0.00)
     is_active = models.BooleanField(default=True)
+    is_frozen = models.BooleanField(default=False)
     created_at = models.DateTimeField(auto_now_add=True)
 
     def save(self, *args, **kwargs):
+        if self.balance < 0:
+            raise ValidationError("Wallet balance cannot be negative.")
         if not self.account_number:
             self.account_number = str(uuid.uuid4().int)[:12]
         super().save(*args, **kwargs)
+
+    def can_withdraw(self, amount):
+        return self.is_active and not self.is_frozen and self.balance >= amount
 
     def __str__(self):
         return f"{self.user.username} - {self.account_number}"
@@ -66,6 +76,9 @@ class Transaction(models.Model):
     def __str__(self):
         return f"{self.transaction_type.upper()} - KSh {self.amount}"
 
+    class Meta:
+        ordering = ['-timestamp']
+
 
 class TransactionHistory(models.Model):
     TRANSACTION_TYPES = (
@@ -91,3 +104,6 @@ class TransactionHistory(models.Model):
 
     def __str__(self):
         return f"{self.transaction_type.upper()} | {self.user.username} | KSh {self.amount} | {self.status}"
+
+    class Meta:
+        ordering = ['-timestamp']
